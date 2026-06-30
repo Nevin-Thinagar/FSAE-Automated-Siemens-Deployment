@@ -221,7 +221,7 @@ rem Exit installer
 chcp 65001 >nul
 
 cls
-echo Exiting installer. Thank you for using the MIT Motorsports Model Year 27 Software Installer
+echo Exiting installer. Thank you for using the MIT Motorsports MY27 Software Installer
 echo.
 echo           [1;30m______________  [1;31m______________  [1;37m______________
 echo          [1;30m/             / [1;31m/             / [1;37m/             /
