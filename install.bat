@@ -26,7 +26,8 @@ set "NX_PATH=SiemensNX-2506.8901_wntx64.zip"
 set "TC_PATH=tc2606_wntx64.zip"
 set "JAVA_PATH=OpenJDK21U-jdk_x64_windows_hotspot_21.0.3_9.zip"
 set "FEMAP_PATH=FEMAP_2606.zip"
-set "STARCCM_PATH=Simcenter_STAR-CCM+_2602.0001-Windows-x64-double.zip"
+rem Make sure to remove the'+' from the STAR-CCM+ filename on the VFS server, as it can cause issues with URL encoding
+set "STARCCM_PATH=Simcenter_STAR-CCM_2602.0001-Windows-x64-double.zip"
 set "VIS_PATH=TcVis_2606_win64.zip"
 set "HEEDS_PATH=Simcenter_HEEDS-2604.0001-win64.exe"
 set "INSTALL_DIR=C:\Program Files\Siemens\%MODEL_YEAR%"
@@ -67,7 +68,7 @@ echo.
 
 choice /n /m "Go to Skip point? (For development only) [Y/N] "
 if errorlevel 1 (
-    set "clean_choices=1 2 3 4 5 6"
+    set "clean_choices=4"
     goto SKIP
 )
 
@@ -184,45 +185,31 @@ mkdir "C:\Siemens_Temp" >NUL 2>&1
 set "CURL_ARGS="
 
 rem All software installations require Java
-echo.
-echo Fetching Java...
 call :downloadAndExtract "%JAVA_PATH%"
 
 if not "!clean_choices:1=!"=="!clean_choices!" (
-    echo.
-    echo Fetching NX...
     call :DownloadAndExtract "%NX_PATH%"
 )
 
-:SKIP
-
 if not "!clean_choices:2=!"=="!clean_choices!" (
-    echo.
-    echo Fetching Teamcenter...
     call :DownloadAndExtract "%TC_PATH%"
 )
 
 if not "!clean_choices:3=!"=="!clean_choices!" (
-    echo.
-    echo Fetching Femap...
     call :DownloadAndExtract "%FEMAP_PATH%"
 )
 
+:SKIP
+
 if not "!clean_choices:4=!"=="!clean_choices!" (
-    echo.
-    echo Fetching STAR-CCM+...
     call :DownloadAndExtract "%STARCCM_PATH%"
 )
 
 if not "!clean_choices:5=!"=="!clean_choices!" (
-    echo.
-    echo Fetching Visualization...
-    call :DownloadAndExtract "%VISUALIZATION_PATH%"
+    call :DownloadAndExtract "%VIS_PATH%"
 )
 
 if not "!clean_choices:6=!"=="!clean_choices!" (
-    echo.
-    echo Fetching HEEDS...
     call :DownloadAndExtract "%HEEDS_PATH%"
 )
 pause
@@ -258,9 +245,10 @@ exit /b
 :DownloadAndExtract
 rem Usage: call :DownloadAndExtract <ArchivePath>
 set "ArchivePath=%~1"
+echo.
 echo Fetching %ArchivePath%...
 
-curl -f -L %VFS_PATH%%ArchivePath% -o %TEMP%\%ArchivePath%"
+curl -f -L "%VFS_PATH%%ArchivePath%" -o "%TEMP%\%ArchivePath%"
 if errorlevel 1 (
     echo [31m[ERROR][0m Failed to fetch %ArchivePath%.
     echo Skipping installation of this software.
