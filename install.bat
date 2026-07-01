@@ -65,6 +65,12 @@ echo and manually uninstall old versions of NX or Teamcenter first.
 echo Check %INSTALL_DIR%. Existing files will NOT be deleted.
 echo.
 
+choice /n /m "Go to Skip point? (For development only) [Y/N] "
+if errorlevel 1 (
+    set "clean_choices=1 2 3 4 5 6"
+    goto SKIP
+)
+
 :: ========== ADVANCED/DEFAULT SELECTION ==========
 choice /n /m "Perform default installation? (NX and Teamcenter only) [Y/N] "
 if errorlevel 2 (
@@ -187,6 +193,8 @@ if not "!clean_choices:1=!"=="!clean_choices!" (
     echo Fetching NX...
     call :DownloadAndExtract "%NX_PATH%"
 )
+
+:SKIP
 
 if not "!clean_choices:2=!"=="!clean_choices!" (
     echo.
@@ -332,5 +340,77 @@ if defined UGII_JAVA_HOME (
     echo [31m[ERROR][0m Failed to set UGII_JAVA_HOME environment variable.
     echo Please set it manually to %INSTALL_DIR%\%JAVA_PATH%.
 )
+
+goto :eof
+
+:InstallNX
+rem Usage: call :InstallNX
+echo.
+if %NX_PATH%=="" (
+    echo [31m[ERROR][0m NX installation path is not set. Skipping NX installation.
+    goto :eof
+)
+
+
+
+goto :eof
+
+:InstallTeamcenter
+rem Usage: call :InstallTeamcenter
+echo.
+if %TC_PATH%=="" (
+    echo [31m[ERROR][0m Teamcenter installation path is not set. Skipping Teamcenter installation.
+    goto :eof
+)
+
+
+
+goto :eof
+
+:InstallFemap
+rem Usage: call :InstallFemap
+echo.
+if %FEMAP_PATH%=="" (
+    echo [31m[ERROR][0m Femap installation path is not set. Skipping Femap installation.
+    goto :eof
+)
+
+
+
+goto :eof
+
+:InstallSTARCCM
+rem Usage: call :InstallSTARCCM
+echo.
+if %STARCCM_PATH%=="" (
+    echo [31m[ERROR][0m STAR-CCM+ installation path is not set. Skipping STAR-CCM+ installation.
+    goto :eof
+)
+
+
+
+goto :eof
+
+:InstallVisualization
+rem Usage: call :InstallVisualization
+echo.
+if %VISUALIZATION_PATH%=="" (
+    echo [31m[ERROR][0m Visualization installation path is not set. Skipping Visualization installation.
+    goto :eof
+)
+
+
+
+goto :eof
+
+:InstallHEEDS
+rem Usage: call :InstallHEEDS
+echo.
+if %HEEDS_PATH%=="" (
+    echo [31m[ERROR][0m HEEDS installation path is not set. Skipping HEEDS installation.
+    goto :eof
+)
+
+
 
 goto :eof
