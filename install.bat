@@ -29,6 +29,7 @@ set "FEMAP_PATH=FEMAP_2606.zip"
 set "STARCCM_PATH=Simcenter_STAR-CCM+_2602.0001-Windows-x64-double.zip"
 set "VIS_PATH=TcVis_2606_win64.zip"
 set "HEEDS_PATH=Simcenter_HEEDS-2604.0001-win64.exe"
+set "INSTALL_DIR=C:\Program Files\Siemens\%MODEL_YEAR%"
 
 :: ========== CHECKS ==========
 rem Check for Administrator privileges
@@ -60,8 +61,8 @@ if %errorlevel% equ 0 (
 rem Storage space warning
 echo.
 echo NOTE: If you are low on disk space, close this window
-echo and manually uninstall old versions of NX or Teamcenter
-echo from Windows Settings first. Existing files will NOT be deleted.
+echo and manually uninstall old versions of NX or Teamcenter first.
+echo Check %INSTALL_DIR%. Existing files will NOT be deleted.
 echo.
 
 :: ========== ADVANCED/DEFAULT SELECTION ==========
@@ -70,7 +71,7 @@ if errorlevel 2 (
     goto MENU
 ) else (
     set "clean_choices=1 2"
-    goto INSTALL
+    goto FETCH
 )
 
 :: ========== ADVANCED INSTALLATION MENU ==========
@@ -166,73 +167,80 @@ if /i not "%confirm%"=="Y" (
     goto MENU
 )
 
-:: ========= INSTALLATION ==========
-:INSTALL
+:: ========= FETCH ==========
+:FETCH
 cls
 echo Fetching installation files and preparing to install selected software...
-echo.
+echo This may take a while depending on your internet connection and the size of the selected software packages.
 
 rem Make temporary directory for staging files
 mkdir "C:\Siemens_Temp" >NUL 2>&1
 set "CURL_ARGS="
 
+rem All software installations require Java
+echo.
+echo Fetching Java...
+call :downloadAndExtract "%JAVA_PATH%"
+
 if not "!clean_choices:1=!"=="!clean_choices!" (
-    call :downloadAndExtract "%JAVA_PATH%"
-    call :DownloadAndExtract "%HEEDS_PATH%"
-    pause
+    echo.
+    echo Fetching NX...
+    call :DownloadAndExtract "%NX_PATH%"
 )
 
 if not "!clean_choices:2=!"=="!clean_choices!" (
     echo.
     echo Fetching Teamcenter...
-    set "CURL_ARGS=%CURL_ARGS% -L %VFS_PATH%%TEAMCENTER_PATH% -o %TEMP%\%TEAMCENTER_PATH%"
+    call :DownloadAndExtract "%TC_PATH%"
 )
 
 if not "!clean_choices:3=!"=="!clean_choices!" (
+    echo.
     echo Fetching Femap...
-    set "CURL_ARGS=%CURL_ARGS% -L %VFS_PATH%%FEMAP_PATH% -o %TEMP%\%FEMAP_PATH%"
+    call :DownloadAndExtract "%FEMAP_PATH%"
 )
 
 if not "!clean_choices:4=!"=="!clean_choices!" (
+    echo.
     echo Fetching STAR-CCM+...
-    set "CURL_ARGS=%CURL_ARGS% -L %VFS_PATH%%STAR_CCM_PATH% -o %TEMP%\%STAR_CCM_PATH%"
+    call :DownloadAndExtract "%STARCCM_PATH%"
 )
 
 if not "!clean_choices:5=!"=="!clean_choices!" (
+    echo.
     echo Fetching Visualization...
-    set "CURL_ARGS=%CURL_ARGS% -L "%VFS_PATH%%VISUALIZATION_PATH%" -o "%TEMP%\%VISUALIZATION_PATH%"
+    call :DownloadAndExtract "%VISUALIZATION_PATH%"
 )
 
 if not "!clean_choices:6=!"=="!clean_choices!" (
+    echo.
     echo Fetching HEEDS...
-    set "CURL_ARGS=%CURL_ARGS% -L %VFS_PATH%%HEEDS_PATH% -o %TEMP%\%HEEDS_PATH%"
+    call :DownloadAndExtract "%HEEDS_PATH%"
 )
-echo.
-echo Downloading files from VFS... This may take a while depending on your internet connection.
-echo.
-curl -Z %CURL_ARGS%
+pause
 
-if not exist "C:\Siemens_Temp\NX" mkdir "C:\Siemens_Temp\NX"
-tar -xf "%TEMP%\%NX_PATH%" -C "C:\Siemens_Temp\NX"
-del "%TEMP%\%NX_PATH%"
+:: ========= INSTALLATION ==========
+:INSTALL
+echo.
+echo Installing software that was fetched successfully...
+echo Creating installation directory at "%INSTALL_DIR%"...
+mkdir "%INSTALL_DIR%" >NUL 2>&1
 
 rem Exit installer
 :QUIT
-chcp 65001 >nul
 
 cls
 echo Exiting installer. Thank you for using the MIT Motorsports MY27 Software Installer
-echo.
-echo           [1;30m______________  [1;31m______________  [1;37m______________
-echo          [1;30m/             / [1;31m/             / [1;37m/             /
-echo         [1;30m/  ___        / [1;31m/             / [1;37m/  ____       /
-echo        [1;30m/  ^|   ^|      / [1;31m/  \     /    / [1;37m/  ^|          /
-echo       [1;30m/   ^|   ^|     / [1;31m/    \   /    / [1;37m/   ^|         /
-echo      [1;30m/    ^|--^<     / [1;31m/      \ /    / [1;37m/    ^|----    /
-echo     [1;30m/     ^|   ^|   / [1;31m/        ^|    / [1;37m/     ^|       /
-echo    [1;30m/      ^|___^|  / [1;31m/         ^|   / [1;37m/      ^|____  /
-echo   [1;30m/             / [1;31m/             / [1;37m/             /
-echo  [1;30m/_____________/ [1;31m/_____________/ [1;37m/_____________/[0m
+echo              [1;30m______________  [1;31m______________  [1;37m______________
+echo             [1;30m/             / [1;31m/             / [1;37m/             /
+echo            [1;30m/  ___        / [1;31m/             / [1;37m/  ____       /
+echo           [1;30m/  ^|   ^|      / [1;31m/  \     /    / [1;37m/  ^|          /
+echo          [1;30m/   ^|   ^|     / [1;31m/    \   /    / [1;37m/   ^|         /
+echo         [1;30m/    ^|--^<     / [1;31m/      \ /    / [1;37m/    ^|----    /
+echo        [1;30m/     ^|   ^|   / [1;31m/        ^|    / [1;37m/     ^|       /
+echo       [1;30m/      ^|___^|  / [1;31m/         ^|   / [1;37m/      ^|____  /
+echo      [1;30m/             / [1;31m/             / [1;37m/             /
+echo     [1;30m/_____________/ [1;31m/_____________/ [1;37m/_____________/[0m
 echo.
 timeout /t 2 >nul
 exit /b
@@ -242,9 +250,7 @@ exit /b
 :DownloadAndExtract
 rem Usage: call :DownloadAndExtract <ArchivePath>
 set "ArchivePath=%~1"
-
 echo Fetching %ArchivePath%...
-echo.
 
 curl -f -L %VFS_PATH%%ArchivePath% -o %TEMP%\%ArchivePath%"
 if errorlevel 1 (
@@ -272,7 +278,6 @@ if /i "%ArchivePath:~-4%"==".zip" (
     ) else (
         echo [32m[SUCCESS][0m Extracted %ArchivePath%.
         set "%~1=%ArchivePath:~0,-4%"
-        echo.
     )
 ) else if /i "%ArchivePath:~-4%"==".exe" (
     echo Moving %ArchivePath% to C:\Siemens_Temp...
@@ -286,7 +291,6 @@ if /i "%ArchivePath:~-4%"==".zip" (
         set "%~1="
     ) else (
         echo [32m[SUCCESS][0m Moved %ArchivePath%.
-        echo.
     )
 ) else (
     echo [31m[ERROR][0m Unsupported archive format for %ArchivePath%.
@@ -294,6 +298,39 @@ if /i "%ArchivePath:~-4%"==".zip" (
     echo.
     timeout /t 1 >nul
     set "%~1="
+)
+
+goto :eof
+
+:InstallJava
+rem Usage: call :InstallJava
+echo.
+if %JAVA_PATH%=="" (
+    echo [31m[ERROR][0m Java installation path is not set. Skipping Java installation.
+    goto :eof
+)
+
+echo Copying %JAVA_PATH% to %INSTALL_DIR%...
+xcopy "C:\Siemens_Temp\%JAVA_PATH%" "%INSTALL_DIR%" /E /I /Q /Y >NUL 2>&1
+if errorlevel 1 (
+    echo.
+    echo [31m[ERROR][0m Failed to copy C:\Siemens_Temp\%JAVA_PATH% to %INSTALL_DIR%\Java.
+    echo Skipping installation of this software.
+    echo.
+    timeout /t 1 >nul
+    goto :eof
+) else (
+    echo [32m[SUCCESS][0m Copied C:\Siemens_Temp\%JAVA_PATH% to %INSTALL_DIR%\Java
+)
+
+echo Setting UGII_JAVA_HOME environment variable...
+set "UGII_JAVA_HOME=%INSTALL_DIR%\%JAVA_PATH%"
+setx UGII_JAVA_HOME "%INSTALL_DIR%\%JAVA_PATH%" /M
+if defined UGII_JAVA_HOME (
+    echo [32m[SUCCESS][0m UGII_JAVA_HOME environment variable set to %INSTALL_DIR%\%JAVA_PATH%.
+) else (
+    echo [31m[ERROR][0m Failed to set UGII_JAVA_HOME environment variable.
+    echo Please set it manually to %INSTALL_DIR%\%JAVA_PATH%.
 )
 
 goto :eof
