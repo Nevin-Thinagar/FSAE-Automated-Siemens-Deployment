@@ -16,4 +16,4 @@ This script was initially created for:
 
 ## Setup Info
 - Make sure to remove the "+" from the STAR-CCM filename or the curl commands will break
-- Get the specific version of Temurin from their Github repo as the website does not
+- Get the specific version of Temurin from their [Github repo](https://github.com/adoptium/temurin21-binaries/releases) as the website only has the latest versions
