@@ -23,6 +23,8 @@ set "MODEL_YEAR=MY27"
 set "VFS_PATH=http://fsae-supercomputer:80/vfs/%MODEL_YEAR%/"
 set "VFS_TEST_PATH=vfs_test.txt"
 
+set "LICENSE_SERVER=29000@FSAE-SUPERCOMPUTER.MIT.EDU"
+
 set "NX_PATH=SiemensNX-2506.8901_wntx64.zip"
 set "NX_DIR=SiemensNX-2506.8901_wntx64"
 
@@ -251,8 +253,6 @@ if not "!clean_choices:6=!"=="!clean_choices!" (
     call :DownloadAndExtract "%HEEDS_PATH%"
 )
 
-:SKIP
-
 :: ========= INSTALLATION ==========
 :INSTALL
 echo.
@@ -261,6 +261,13 @@ echo Creating installation directory at "%INSTALL_DIR%"...
 mkdir "%INSTALL_DIR%" >NUL 2>&1
 
 call :InstallJava
+
+:SKIP
+
+if not "!clean_choices:1=!"=="!clean_choices!" (
+    call :InstallNX
+)
+
 pause
 
 rem Exit installer
@@ -329,7 +336,7 @@ if /i "%ArchivePath:~-4%"==".zip" (
         echo [32m[SUCCESS][0m Moved %ArchivePath%.
     )
 ) else (
-    echo [31m[ERROR][0m Unsupported archive format for %ArchivePath%.
+    echo [31m[ERROR][0m Unsupported archive format for %ArchivePath%
     echo Skipping installation of this software.
     echo.
     timeout /t 1 >nul
@@ -375,12 +382,34 @@ goto :eof
 :InstallNX
 rem Usage: call :InstallNX
 echo.
+echo Installing NX...
 if %NX_PATH%=="" (
     echo [31m[ERROR][0m NX installation path is not set. Skipping NX installation.
     goto :eof
 )
 
+echo setting SPLM_LICENSE_SERVER environment variable...
+set "SPLM_LICENSE_SERVER=%LICENSE_SERVER%" >NUL 2>&1
+setx SPLM_LICENSE_SERVER "%LICENSE_SERVER%" /M >NUL 2>&1
+if defined SPLM_LICENSE_SERVER (
+    echo [32m[SUCCESS][0m SPLM_LICENSE_SERVER environment variable set to %SPLM_LICENSE_SERVER%.
+) else (
+    echo [31m[ERROR][0m Failed to set SPLM_LICENSE_SERVER environment variable.
+    echo Please set it manually to %LICENSE_SERVER%.
+)
 
+echo setting UGII_BASE_DIR environment variable...
+set "UGII_BASE_DIR=%INSTALL_DIR%\NX2506" >NUL 2>&1
+setx UGII_BASE_DIR "%INSTALL_DIR%\NX2506" /M >NUL 2>&1
+if defined UGII_BASE_DIR (
+    echo [32m[SUCCESS][0m UGII_BASE_DIR environment variable set to %UGII_BASE_DIR%.
+) else (
+    echo [31m[ERROR][0m Failed to set UGII_BASE_DIR environment variable.
+    echo Please set it manually to %INSTALL_DIR%\NX2506.
+)
+
+echo Running Setup.exe for NX installation, this may take a while...
+C:\Siemens_Temp\%NX_PATH%\nx\Setup.exe /s /w /v" /qn LICENSESERVER=%LICENSE_SERVER% INSTALLDIR=\"%INSTALL_DIR%\NX2506\" ADDLOCAL=ALL"
 
 goto :eof
 
