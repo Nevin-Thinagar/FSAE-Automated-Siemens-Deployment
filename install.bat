@@ -22,14 +22,28 @@ rem Set VFS paths for software download
 set "MODEL_YEAR=MY27"
 set "VFS_PATH=http://fsae-supercomputer:80/vfs/%MODEL_YEAR%/"
 set "VFS_TEST_PATH=vfs_test.txt"
+
 set "NX_PATH=SiemensNX-2506.8901_wntx64.zip"
+set "NX_DIR=SiemensNX-2506.8901_wntx64"
+
 set "TC_PATH=tc2606_wntx64.zip"
+set "TC_DIR=tc2606_wntx64"
+
 set "JAVA_PATH=OpenJDK21U-jdk_x64_windows_hotspot_21.0.3_9.zip"
+set "JAVA_DIR=jdk-21.0.3+9"
+
 set "FEMAP_PATH=FEMAP_2606.zip"
+set "FEMAP_DIR=FEMAP_2606"
+
 rem Make sure to remove the'+' from the STAR-CCM+ filename on the VFS server, as it can cause issues with URL encoding
 set "STARCCM_PATH=Simcenter_STAR-CCM_2602.0001-Windows-x64-double.zip"
+set "STARCCM_DIR=starccm+_21.02.008"
+
 set "VIS_PATH=TcVis_2606_win64.zip"
+set "VIS_DIR=TcVis_2606_2026051400_win64"
+
 set "HEEDS_PATH=Simcenter_HEEDS-2604.0001-win64.exe"
+
 set "INSTALL_DIR=C:\Program Files\Siemens\%MODEL_YEAR%"
 
 :: ========== CHECKS ==========
@@ -53,7 +67,7 @@ if %errorlevel% equ 0 (
     echo.
     echo Please ensure you are connected to MIT Wi-Fi and the
     echo MIT VPN if you are off campus. If this error persists,
-    echo  please ping @server-help on Slack for assistance.
+    echo please ping @server-help on Slack for assistance.
     echo.
     pause
     goto QUIT
@@ -70,7 +84,13 @@ choice /n /m "Go to Skip point? (For development only) [Y/N] "
 if errorlevel 2 (
     echo Continuing with installation...
 ) else (
-    set "clean_choices=4"
+    set "clean_choices=1 2 3 4 5 6"
+    set "JAVA_PATH=%JAVA_DIR%"
+    set "NX_PATH=%NX_DIR%"
+    set "TC_PATH=%TC_DIR%"
+    set "FEMAP_PATH=%FEMAP_DIR%"
+    set "STARCCM_PATH=%STARCCM_DIR%"
+    set "VIS_PATH=%VIS_DIR%"
     goto SKIP
 )
 
@@ -188,31 +208,50 @@ set "CURL_ARGS="
 
 rem All software installations require Java
 call :downloadAndExtract "%JAVA_PATH%"
+if not JAVA_PATH=="" (
+    set "JAVA_PATH=%JAVA_DIR%"
+)
 
 if not "!clean_choices:1=!"=="!clean_choices!" (
     call :DownloadAndExtract "%NX_PATH%"
+    if not NX_PATH=="" (
+        set "NX_PATH=%NX_DIR%"
+    )
 )
 
 if not "!clean_choices:2=!"=="!clean_choices!" (
     call :DownloadAndExtract "%TC_PATH%"
+    if not TC_PATH=="" (
+        set "TC_PATH=%TC_DIR%"
+    )
 )
 
 if not "!clean_choices:3=!"=="!clean_choices!" (
     call :DownloadAndExtract "%FEMAP_PATH%"
+    if not FEMAP_PATH=="" (
+        set "FEMAP_PATH=%FEMAP_DIR%"
+    )
 )
 
 if not "!clean_choices:4=!"=="!clean_choices!" (
     call :DownloadAndExtract "%STARCCM_PATH%"
+    if not STARCCM_PATH=="" (
+        set "STARCCM_PATH=%STARCCM_DIR%"
+    )
 )
 
 if not "!clean_choices:5=!"=="!clean_choices!" (
     call :DownloadAndExtract "%VIS_PATH%"
+    if not VIS_PATH=="" (
+        set "VIS_PATH=%VIS_DIR%"
+    )
 )
 
 if not "!clean_choices:6=!"=="!clean_choices!" (
     call :DownloadAndExtract "%HEEDS_PATH%"
 )
-pause
+
+:SKIP
 
 :: ========= INSTALLATION ==========
 :INSTALL
@@ -220,6 +259,9 @@ echo.
 echo Installing software that was fetched successfully...
 echo Creating installation directory at "%INSTALL_DIR%"...
 mkdir "%INSTALL_DIR%" >NUL 2>&1
+
+call :InstallJava
+pause
 
 rem Exit installer
 :QUIT
@@ -236,7 +278,6 @@ echo        [1;30m/     ^|   ^|   / [1;31m/        ^|    / [1;37m/     ^|    
 echo       [1;30m/      ^|___^|  / [1;31m/         ^|   / [1;37m/      ^|____  /
 echo      [1;30m/             / [1;31m/             / [1;37m/             /
 echo     [1;30m/_____________/ [1;31m/_____________/ [1;37m/_____________/[0m
-echo.
 timeout /t 2 >nul
 exit /b
 
@@ -273,7 +314,6 @@ if /i "%ArchivePath:~-4%"==".zip" (
         set "%~1="
     ) else (
         echo [32m[SUCCESS][0m Extracted %ArchivePath%.
-        set "%~1=%ArchivePath:~0,-4%"
     )
 ) else if /i "%ArchivePath:~-4%"==".exe" (
     echo Moving %ArchivePath% to C:\Siemens_Temp...
@@ -301,27 +341,28 @@ goto :eof
 :InstallJava
 rem Usage: call :InstallJava
 echo.
+echo Installing Java...
 if %JAVA_PATH%=="" (
     echo [31m[ERROR][0m Java installation path is not set. Skipping Java installation.
     goto :eof
 )
 
 echo Copying %JAVA_PATH% to %INSTALL_DIR%...
-xcopy "C:\Siemens_Temp\%JAVA_PATH%" "%INSTALL_DIR%" /E /I /Q /Y >NUL 2>&1
-if errorlevel 1 (
+robocopy "C:\Siemens_Temp\%JAVA_PATH%" "%INSTALL_DIR%\%JAVA_PATH%" /mir >NUL 2>&1
+if errorlevel 3 (
     echo.
-    echo [31m[ERROR][0m Failed to copy C:\Siemens_Temp\%JAVA_PATH% to %INSTALL_DIR%\Java.
+    echo [31m[ERROR][0m Failed to copy C:\Siemens_Temp\%JAVA_PATH% to %INSTALL_DIR%
     echo Skipping installation of this software.
     echo.
     timeout /t 1 >nul
     goto :eof
 ) else (
-    echo [32m[SUCCESS][0m Copied C:\Siemens_Temp\%JAVA_PATH% to %INSTALL_DIR%\Java
+    echo [32m[SUCCESS][0m Copied C:\Siemens_Temp\%JAVA_PATH% to %INSTALL_DIR%
 )
 
 echo Setting UGII_JAVA_HOME environment variable...
-set "UGII_JAVA_HOME=%INSTALL_DIR%\%JAVA_PATH%"
-setx UGII_JAVA_HOME "%INSTALL_DIR%\%JAVA_PATH%" /M
+set "UGII_JAVA_HOME=%INSTALL_DIR%\%JAVA_PATH%" >NUL 2>&1
+setx UGII_JAVA_HOME "%INSTALL_DIR%\%JAVA_PATH%" /M >NUL 2>&1
 if defined UGII_JAVA_HOME (
     echo [32m[SUCCESS][0m UGII_JAVA_HOME environment variable set to %INSTALL_DIR%\%JAVA_PATH%.
 ) else (
