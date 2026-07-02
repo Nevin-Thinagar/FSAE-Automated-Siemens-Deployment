@@ -67,7 +67,9 @@ echo Check %INSTALL_DIR%. Existing files will NOT be deleted.
 echo.
 
 choice /n /m "Go to Skip point? (For development only) [Y/N] "
-if errorlevel 1 (
+if errorlevel 2 (
+    echo Continuing with installation...
+) else (
     set "clean_choices=4"
     goto SKIP
 )
@@ -198,8 +200,6 @@ if not "!clean_choices:2=!"=="!clean_choices!" (
 if not "!clean_choices:3=!"=="!clean_choices!" (
     call :DownloadAndExtract "%FEMAP_PATH%"
 )
-
-:SKIP
 
 if not "!clean_choices:4=!"=="!clean_choices!" (
     call :DownloadAndExtract "%STARCCM_PATH%"
