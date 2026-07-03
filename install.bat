@@ -47,6 +47,10 @@ set "VIS_DIR=TcVis_2606_2026051400_win64"
 set "HEEDS_PATH=Simcenter_HEEDS-2604.0001-win64.exe"
 
 set "INSTALL_DIR=C:\Program Files\Siemens\%MODEL_YEAR%"
+set "NX_INSTALL_DIR=%INSTALL_DIR%"
+
+rem Do not include spaces as this will prevent the NX installer from running
+set "NX_FEATURES=FEAT_AUTOMOTIVE,FEAT_CFDD,FEAT_COMPOSITES,FEAT_NXACOUSTICS,FEAT_NXNASTRAN,FEAT_DIAGRAMMING,FEAT_DRAFTING,FEAT_MANUFACTURING,FEAT_NXTMG,FEAT_OPTIMIZATION_TOOLS,FEAT_PROGRAMMING_TOOLS,FEAT_ROUTING,FEAT_SAMCEF,FEAT_SIMULATION,FEAT_STUDIO_RENDER,FEAT_TRANSLATORS,FEAT_VALIDATION"
 
 :: ========== CHECKS ==========
 rem Check for Administrator privileges
@@ -399,17 +403,39 @@ if defined SPLM_LICENSE_SERVER (
 )
 
 echo setting UGII_BASE_DIR environment variable...
-set "UGII_BASE_DIR=%INSTALL_DIR%\NX2506" >NUL 2>&1
-setx UGII_BASE_DIR "%INSTALL_DIR%\NX2506" /M >NUL 2>&1
 if defined UGII_BASE_DIR (
-    echo [32m[SUCCESS][0m UGII_BASE_DIR environment variable set to %UGII_BASE_DIR%.
+    if "%UGII_BASE_DIR:NX2506=%"=="!UGII_BASE_DIR!" (
+        set "UGII_BASE_DIR=%INSTALL_DIR%\NX2506" >NUL 2>&1
+        setx UGII_BASE_DIR "%INSTALL_DIR%\NX2506" /M >NUL 2>&1
+        if defined UGII_BASE_DIR (
+            echo [32m[SUCCESS][0m UGII_BASE_DIR environment variable set to !UGII_BASE_DIR!.
+        ) else (
+            echo [31m[ERROR][0m Failed to set UGII_BASE_DIR environment variable.
+            echo Please set it manually to %INSTALL_DIR%\NX2506.
+        )
+    ) else (
+        echo [33m[WARN][0m UGII_BASE_DIR environment variable already set to %UGII_BASE_DIR%.
+        echo This means NX 2506 is already installed. Only updating NX.
+        set "NX_INSTALL_DIR=%UGII_BASE_DIR:\NX2506=%"
+    )
 ) else (
-    echo [31m[ERROR][0m Failed to set UGII_BASE_DIR environment variable.
-    echo Please set it manually to %INSTALL_DIR%\NX2506.
+    set "UGII_BASE_DIR=%INSTALL_DIR%\NX2506" >NUL 2>&1
+    setx UGII_BASE_DIR "%INSTALL_DIR%\NX2506" /M >NUL 2>&1
+    if defined UGII_BASE_DIR (
+        echo [32m[SUCCESS][0m UGII_BASE_DIR environment variable set to !UGII_BASE_DIR!.
+    ) else (
+        echo [31m[ERROR][0m Failed to set UGII_BASE_DIR environment variable.
+        echo Please set it manually to %INSTALL_DIR%\NX2506.
+    )
 )
 
 echo Running Setup.exe for NX installation, this may take a while...
-C:\Siemens_Temp\%NX_PATH%\nx\Setup.exe /s /w /v" /qn LICENSESERVER=%LICENSE_SERVER% INSTALLDIR=\"%INSTALL_DIR%\NX2506\" ADDLOCAL=ALL"
+C:\Siemens_Temp\%NX_PATH%\nx\Setup.exe /s /w /v" /qn LICENSESERVER=%LICENSE_SERVER% INSTALLDIR=\"%INSTALL_DIR%\NX2506\" ADDLOCAL=\"%NX_FEATURES%\""
+if exist "!NX_INSTALL_DIR!\NX2506\UGII\ugraf.exe" (
+    echo [32m[SUCCESS][0m NX installation completed successfully.
+) else (
+    echo [31m[ERROR][0m NX installation failed. Please check the log files in C:\Siemens_Temp\%NX_PATH%\nx\ for more details.
+)
 
 goto :eof
 
