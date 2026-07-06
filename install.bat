@@ -27,6 +27,10 @@ set "LICENSE_SERVER=29000@FSAE-SUPERCOMPUTER.MIT.EDU"
 
 set "NX_PATH=SiemensNX-2506.8901_wntx64.zip"
 set "NX_DIR=SiemensNX-2506.8901_wntx64"
+set "NX_DEFAULTS_PATH=NX_user.dpv"
+set "NX_USER_MTX=user.mtx"
+set "NX_USER_PREFERENCES=UserPreferences.txt"
+set "NX_USER_PROFILE=UserProfile.dat"
 
 set "TC_PATH=tc2606_wntx64.zip"
 set "TC_DIR=tc2606_wntx64"
@@ -97,6 +101,7 @@ if errorlevel 2 (
     set "FEMAP_PATH=%FEMAP_DIR%"
     set "STARCCM_PATH=%STARCCM_DIR%"
     set "VIS_PATH=%VIS_DIR%"
+    set "KEEP_NX_DEFAULTS=false"
     goto SKIP
 )
 
@@ -207,13 +212,10 @@ if /i not "%confirm%"=="Y" (
 set "KEEP_NX_DEFAULTS=true"
 if not "!clean_choices:1=!"=="!clean_choices!" (
     choice /n /m "Do you want to overwrite NX default settings? [Y/N] "
-    if errorlevel 2 (
+    if errorlevel 1 (
         set "KEEP_NX_DEFAULTS=false"
     )
 )
-
-pause
-goto QUIT
 
 :: ========= FETCH ==========
 :FETCH
@@ -233,6 +235,10 @@ if not JAVA_PATH=="" (
 
 if not "!clean_choices:1=!"=="!clean_choices!" (
     call :DownloadAndExtract "%NX_PATH%"
+    call :DownloadAndExtract "%NX_DEFAULTS_PATH%"
+    call :DownloadAndExtract "%NX_USER_MTX%"
+    call :DownloadAndExtract "%NX_USER_PREFERENCES%"
+    call :DownloadAndExtract "%NX_USER_PROFILE%"
     if not NX_PATH=="" (
         set "NX_PATH=%NX_DIR%"
     )
@@ -270,6 +276,8 @@ if not "!clean_choices:6=!"=="!clean_choices!" (
     call :DownloadAndExtract "%HEEDS_PATH%"
 )
 
+:SKIP
+
 :: ========= INSTALLATION ==========
 :INSTALL
 echo.
@@ -278,8 +286,6 @@ echo Creating installation directory at "%INSTALL_DIR%"...
 mkdir "%INSTALL_DIR%" >NUL 2>&1
 
 call :InstallJava
-
-:SKIP
 
 if not "!clean_choices:1=!"=="!clean_choices!" (
     call :InstallNX
@@ -313,7 +319,7 @@ set "ArchivePath=%~1"
 echo.
 echo Fetching %ArchivePath%...
 
-curl -f -L "%VFS_PATH%%ArchivePath%" -o "%TEMP%\%ArchivePath%"
+curl -f -L "%VFS_PATH%%ArchivePath%" -o "%TEMP%\%ArchivePath%" >NUL 2>&1
 if errorlevel 1 (
     echo [31m[ERROR][0m Failed to fetch %ArchivePath%.
     echo Skipping installation of this software.
@@ -339,7 +345,7 @@ if /i "%ArchivePath:~-4%"==".zip" (
     ) else (
         echo [32m[SUCCESS][0m Extracted %ArchivePath%.
     )
-) else if /i "%ArchivePath:~-4%"==".exe" (
+) else (
     echo Moving %ArchivePath% to C:\Siemens_Temp...
     move "%TEMP%\%ArchivePath%" "C:\Siemens_Temp\%ArchivePath%" >NUL 2>&1
     if errorlevel 1 (
@@ -352,12 +358,6 @@ if /i "%ArchivePath:~-4%"==".zip" (
     ) else (
         echo [32m[SUCCESS][0m Moved %ArchivePath%.
     )
-) else (
-    echo [31m[ERROR][0m Unsupported archive format for %ArchivePath%
-    echo Skipping installation of this software.
-    echo.
-    timeout /t 1 >nul
-    set "%~1="
 )
 
 goto :eof
@@ -450,8 +450,6 @@ if exist "!NX_INSTALL_DIR!\NX2506\UGII\ugraf.exe" (
     echo [31m[ERROR][0m NX installation failed. Please check the log files in C:\Siemens_Temp\%NX_PATH%\nx\ for more details.
 )
 
-
-
 echo Setting NX Bundles...
 reg add "HKCU\Software\Siemens_PLM_Software\Common_Licensing" /v NX_BUNDLES /t REG_SZ /d "ACD11,ACD10,SCACAD100" /f >NUL 2>&1
 for /f "tokens=2,*" %%A in ('reg query "HKCU\Software\Siemens_PLM_Software\Common_Licensing" /v "NX_BUNDLES" 2^>nul') do (
@@ -463,13 +461,26 @@ if "!REG_VALUE!"=="ACD11,ACD10,SCACAD100" (
     echo [31m[ERROR][0m Failed to set NX_BUNDLES registry key. Please apply bundles manually in NX or by using the Licensing Tool.
 )
 
-
 if "%KEEP_NX_DEFAULTS%"=="false" (
     echo Overwriting NX default settings...
-    rem Add commands to overwrite NX default settings here
-    echo [32m[SUCCESS][0m NX customer defaults set.
+    robocopy "C:\Siemens_Temp" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_DEFAULTS_PATH%" /copyall >NUL 2>&1
+    if errorlevel 3 (
+        echo [31m[ERROR][0m Failed to overwrite NX default settings.
+        echo Please apply defaults manually in NX or by using the Licensing Tool.
+    ) else (
+        echo [32m[SUCCESS][0m NX default settings overwritten successfully.
+    )
 ) else (
     echo [INFO] Keeping existing NX default settings.
+)
+
+echo Applying FSAE role...
+robocopy "C:\Siemens_Temp" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_USER_MTX%" "%NX_USER_PREFERENCES%" "%NX_USER_PROFILE%" /copyall >NUL 2>&1
+if errorlevel 3 (
+    echo [31m[ERROR][0m Failed to apply FSAE role.
+    echo Please apply role manually in NX.
+) else (
+    echo [32m[SUCCESS][0m FSAE role applied successfully.
 )
 
 goto :eof
