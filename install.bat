@@ -50,7 +50,7 @@ set "INSTALL_DIR=C:\Program Files\Siemens\%MODEL_YEAR%"
 set "NX_INSTALL_DIR=%INSTALL_DIR%"
 
 rem Do not include spaces as this will prevent the NX installer from running
-set "NX_FEATURES=FEAT_AUTOMOTIVE,FEAT_CFDD,FEAT_COMPOSITES,FEAT_NXACOUSTICS,FEAT_NXNASTRAN,FEAT_DIAGRAMMING,FEAT_DRAFTING,FEAT_MANUFACTURING,FEAT_NXTMG,FEAT_OPTIMIZATION_TOOLS,FEAT_PROGRAMMING_TOOLS,FEAT_ROUTING,FEAT_SAMCEF,FEAT_SIMULATION,FEAT_STUDIO_RENDER,FEAT_TRANSLATORS,FEAT_VALIDATION"
+set "NX_FEATURES=ALL"
 
 :: ========== CHECKS ==========
 rem Check for Administrator privileges
@@ -106,7 +106,7 @@ if errorlevel 2 (
     goto MENU
 ) else (
     set "clean_choices=1 2"
-    goto FETCH
+    goto NX_DEFAULTS
 )
 
 :: ========== ADVANCED INSTALLATION MENU ==========
@@ -201,6 +201,19 @@ set /p confirm="Is this correct? (Y/N): "
 if /i not "%confirm%"=="Y" (
     goto MENU
 )
+
+:: ========= NX DEFAULTS OVERWRITE ==========
+:NX_DEFAULTS
+set "KEEP_NX_DEFAULTS=true"
+if not "!clean_choices:1=!"=="!clean_choices!" (
+    choice /n /m "Do you want to overwrite NX default settings? [Y/N] "
+    if errorlevel 2 (
+        set "KEEP_NX_DEFAULTS=false"
+    )
+)
+
+pause
+goto QUIT
 
 :: ========= FETCH ==========
 :FETCH
@@ -435,6 +448,28 @@ if exist "!NX_INSTALL_DIR!\NX2506\UGII\ugraf.exe" (
     echo [32m[SUCCESS][0m NX installation completed successfully.
 ) else (
     echo [31m[ERROR][0m NX installation failed. Please check the log files in C:\Siemens_Temp\%NX_PATH%\nx\ for more details.
+)
+
+
+
+echo Setting NX Bundles...
+reg add "HKCU\Software\Siemens_PLM_Software\Common_Licensing" /v NX_BUNDLES /t REG_SZ /d "ACD11,ACD10,SCACAD100" /f >NUL 2>&1
+for /f "tokens=2,*" %%A in ('reg query "HKCU\Software\Siemens_PLM_Software\Common_Licensing" /v "NX_BUNDLES" 2^>nul') do (
+    set "REG_VALUE=%%B"
+)
+if "!REG_VALUE!"=="ACD11,ACD10,SCACAD100" (
+    echo [32m[SUCCESS][0m NX_BUNDLES registry key set successfully.
+) else (
+    echo [31m[ERROR][0m Failed to set NX_BUNDLES registry key. Please apply bundles manually in NX or by using the Licensing Tool.
+)
+
+
+if "%KEEP_NX_DEFAULTS%"=="false" (
+    echo Overwriting NX default settings...
+    rem Add commands to overwrite NX default settings here
+    echo [32m[SUCCESS][0m NX customer defaults set.
+) else (
+    echo [INFO] Keeping existing NX default settings.
 )
 
 goto :eof
