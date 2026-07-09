@@ -30,10 +30,10 @@ set "NX_DIR=SiemensNX-2506.8901_wntx64"
 set "NX_DEFAULTS_PATH=NX_user.dpv"
 set "NX_USER_MTX=user.mtx"
 set "NX_USER_PREFERENCES=UserPreferences.txt"
-set "NX_USER_PROFILE=UserProfile.dat"
+set "NX_USER_PROFILE=UserProfile.dat"`
 
-set "TC_PATH=tc2606_wntx64.zip"
-set "TC_DIR=tc2606_wntx64"
+set "TC_PATH=tc2506.0009_wntx64.zip"
+set "TC_DIR=tc2506.0009_wntx64"
 
 set "JAVA_PATH=OpenJDK21U-jdk_x64_windows_hotspot_21.0.3_9.zip"
 set "JAVA_DIR=jdk-21.0.3+9"
@@ -95,13 +95,6 @@ if errorlevel 2 (
     echo Continuing with installation...
 ) else (
     set "clean_choices=1 2 3 4 5 6"
-    set "JAVA_PATH=%JAVA_DIR%"
-    set "NX_PATH=%NX_DIR%"
-    set "TC_PATH=%TC_DIR%"
-    set "FEMAP_PATH=%FEMAP_DIR%"
-    set "STARCCM_PATH=%STARCCM_DIR%"
-    set "VIS_PATH=%VIS_DIR%"
-    set "KEEP_NX_DEFAULTS=false"
     goto SKIP
 )
 
@@ -319,7 +312,7 @@ set "ArchivePath=%~1"
 echo.
 echo Fetching %ArchivePath%...
 
-curl -f -L "%VFS_PATH%%ArchivePath%" -o "%TEMP%\%ArchivePath%" >NUL 2>&1
+curl -f -L "%VFS_PATH%%ArchivePath%" -o "%TEMP%\%ArchivePath%"
 if errorlevel 1 (
     echo [31m[ERROR][0m Failed to fetch %ArchivePath%.
     echo Skipping installation of this software.
