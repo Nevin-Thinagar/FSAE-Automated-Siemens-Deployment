@@ -32,8 +32,10 @@ set "NX_USER_MTX=user.mtx"
 set "NX_USER_PREFERENCES=UserPreferences.txt"
 set "NX_USER_PROFILE=UserProfile.dat"`
 
-set "TC_PATH=tc2506.0009_wntx64.zip"
-set "TC_DIR=tc2506.0009_wntx64"
+set "TC_PATH=tc2506_wntx64.zip"
+set "TC_DIR=wntx64"
+set "TC_PATCH_PATH=tc2506.0009_wntx64.zip"
+set "TC_PATCH_DIR=wntx64"
 
 set "JAVA_PATH=OpenJDK21U-jdk_x64_windows_hotspot_21.0.3_9.zip"
 set "JAVA_DIR=jdk-21.0.3+9"
@@ -50,7 +52,8 @@ set "VIS_DIR=TcVis_2606_2026051400_win64"
 
 set "HEEDS_PATH=Simcenter_HEEDS-2604.0001-win64.exe"
 
-set "INSTALL_DIR=C:\Program Files\Siemens\%MODEL_YEAR%"
+set "TEMP_DIR=C:\Siemens_Temp"
+set "INSTALL_DIR=C:\Siemens\%MODEL_YEAR%"
 set "NX_INSTALL_DIR=%INSTALL_DIR%"
 
 rem Do not include spaces as this will prevent the NX installer from running
@@ -87,7 +90,7 @@ rem Storage space warning
 echo.
 echo NOTE: If you are low on disk space, close this window
 echo and manually uninstall old versions of NX or Teamcenter first.
-echo Check %INSTALL_DIR%. Existing files will NOT be deleted.
+echo Check your past installation directory. Existing files will NOT be deleted.
 echo.
 
 choice /n /m "Go to Skip point? (For development only) [Y/N] "
@@ -217,7 +220,7 @@ echo Fetching installation files and preparing to install selected software...
 echo This may take a while depending on your internet connection and the size of the selected software packages.
 
 rem Make temporary directory for staging files
-mkdir "C:\Siemens_Temp" >NUL 2>&1
+mkdir "%TEMP_DIR%" >NUL 2>&1
 set "CURL_ARGS="
 
 rem All software installations require Java
@@ -238,9 +241,15 @@ if not "!clean_choices:1=!"=="!clean_choices!" (
 )
 
 if not "!clean_choices:2=!"=="!clean_choices!" (
+    :SKIP
     call :DownloadAndExtract "%TC_PATH%"
     if not TC_PATH=="" (
         set "TC_PATH=%TC_DIR%"
+    )
+    :goto QUIT
+    call :DownloadAndExtract "%TC_PATCH_PATH%"
+    if not TC_PATCH_PATH=="" (
+        set "TC_PATCH_PATH=%TC_PATCH_DIR%"
     )
 )
 
@@ -268,8 +277,6 @@ if not "!clean_choices:5=!"=="!clean_choices!" (
 if not "!clean_choices:6=!"=="!clean_choices!" (
     call :DownloadAndExtract "%HEEDS_PATH%"
 )
-
-:SKIP
 
 :: ========= INSTALLATION ==========
 :INSTALL
@@ -312,7 +319,7 @@ set "ArchivePath=%~1"
 echo.
 echo Fetching %ArchivePath%...
 
-curl -f -L "%VFS_PATH%%ArchivePath%" -o "%TEMP%\%ArchivePath%"
+curl -f -L "%VFS_PATH%%ArchivePath%" -o "%TEMP_DIR%\%ArchivePath%"
 if errorlevel 1 (
     echo [31m[ERROR][0m Failed to fetch %ArchivePath%.
     echo Skipping installation of this software.
@@ -327,7 +334,7 @@ if errorlevel 1 (
 
 if /i "%ArchivePath:~-4%"==".zip" (
     echo Extracting %ArchivePath%...
-    tar -xf "%TEMP%\%ArchivePath%" -C "C:\Siemens_Temp" >NUL 2>&1
+    tar -xf "%TEMP_DIR%\%ArchivePath%" -C "%TEMP_DIR%" >NUL 2>&1
     if errorlevel 1 (
         echo [31m[ERROR][0m Failed to extract %ArchivePath%.
         echo Skipping installation of this software.
@@ -337,19 +344,6 @@ if /i "%ArchivePath:~-4%"==".zip" (
         set "%~1="
     ) else (
         echo [32m[SUCCESS][0m Extracted %ArchivePath%.
-    )
-) else (
-    echo Moving %ArchivePath% to C:\Siemens_Temp...
-    move "%TEMP%\%ArchivePath%" "C:\Siemens_Temp\%ArchivePath%" >NUL 2>&1
-    if errorlevel 1 (
-        echo.
-        echo [31m[ERROR][0m Failed to move %ArchivePath%.
-        echo Skipping installation of this software.
-        echo.
-        timeout /t 1 >nul
-        set "%~1="
-    ) else (
-        echo [32m[SUCCESS][0m Moved %ArchivePath%.
     )
 )
 
@@ -364,20 +358,20 @@ if %JAVA_PATH%=="" (
     goto :eof
 )
 
-echo Copying %JAVA_PATH% to %INSTALL_DIR%...
-robocopy "C:\Siemens_Temp\%JAVA_PATH%" "%INSTALL_DIR%\%JAVA_PATH%" /mir >NUL 2>&1
+echo [Java: 1/2] Copying %JAVA_PATH% to %INSTALL_DIR%...
+robocopy "%TEMP_DIR%\%JAVA_PATH%" "%INSTALL_DIR%\%JAVA_PATH%" /mir >NUL 2>&1
 if errorlevel 3 (
     echo.
-    echo [31m[ERROR][0m Failed to copy C:\Siemens_Temp\%JAVA_PATH% to %INSTALL_DIR%
+    echo [31m[ERROR][0m Failed to copy %TEMP_DIR%\%JAVA_PATH% to %INSTALL_DIR%
     echo Skipping installation of this software.
     echo.
     timeout /t 1 >nul
     goto :eof
 ) else (
-    echo [32m[SUCCESS][0m Copied C:\Siemens_Temp\%JAVA_PATH% to %INSTALL_DIR%
+    echo [32m[SUCCESS][0m Copied %TEMP_DIR%\%JAVA_PATH% to %INSTALL_DIR%
 )
 
-echo Setting UGII_JAVA_HOME environment variable...
+echo [Java: 2/2] Setting UGII_JAVA_HOME environment variable...
 set "UGII_JAVA_HOME=%INSTALL_DIR%\%JAVA_PATH%" >NUL 2>&1
 setx UGII_JAVA_HOME "%INSTALL_DIR%\%JAVA_PATH%" /M >NUL 2>&1
 if defined UGII_JAVA_HOME (
@@ -398,7 +392,7 @@ if %NX_PATH%=="" (
     goto :eof
 )
 
-echo setting SPLM_LICENSE_SERVER environment variable...
+echo [NX: 1/6] setting SPLM_LICENSE_SERVER environment variable...
 set "SPLM_LICENSE_SERVER=%LICENSE_SERVER%" >NUL 2>&1
 setx SPLM_LICENSE_SERVER "%LICENSE_SERVER%" /M >NUL 2>&1
 if defined SPLM_LICENSE_SERVER (
@@ -408,7 +402,7 @@ if defined SPLM_LICENSE_SERVER (
     echo Please set it manually to %LICENSE_SERVER%.
 )
 
-echo setting UGII_BASE_DIR environment variable...
+echo [NX: 2/6] setting UGII_BASE_DIR environment variable...
 if defined UGII_BASE_DIR (
     if "%UGII_BASE_DIR:NX2506=%"=="!UGII_BASE_DIR!" (
         set "UGII_BASE_DIR=%INSTALL_DIR%\NX2506" >NUL 2>&1
@@ -435,15 +429,15 @@ if defined UGII_BASE_DIR (
     )
 )
 
-echo Running Setup.exe for NX installation, this may take a while...
-C:\Siemens_Temp\%NX_PATH%\nx\Setup.exe /s /w /v" /qn LICENSESERVER=%LICENSE_SERVER% INSTALLDIR=\"%INSTALL_DIR%\NX2506\" ADDLOCAL=\"%NX_FEATURES%\""
+echo [NX: 3/6] Running Setup.exe for NX installation, this may take a while...
+%TEMP_DIR%\%NX_PATH%\nx\Setup.exe /s /w /v" /qn LICENSESERVER=%LICENSE_SERVER% INSTALLDIR=\"%INSTALL_DIR%\NX2506\" ADDLOCAL=\"%NX_FEATURES%\""
 if exist "!NX_INSTALL_DIR!\NX2506\UGII\ugraf.exe" (
     echo [32m[SUCCESS][0m NX installation completed successfully.
 ) else (
-    echo [31m[ERROR][0m NX installation failed. Please check the log files in C:\Siemens_Temp\%NX_PATH%\nx\ for more details.
+    echo [31m[ERROR][0m NX installation failed. Please check the log files in %TEMP_DIR%\%NX_PATH%\nx\ for more details.
 )
 
-echo Setting NX Bundles...
+echo [NX: 4/6] Setting NX Bundles...
 reg add "HKCU\Software\Siemens_PLM_Software\Common_Licensing" /v NX_BUNDLES /t REG_SZ /d "ACD11,ACD10,SCACAD100" /f >NUL 2>&1
 for /f "tokens=2,*" %%A in ('reg query "HKCU\Software\Siemens_PLM_Software\Common_Licensing" /v "NX_BUNDLES" 2^>nul') do (
     set "REG_VALUE=%%B"
@@ -455,8 +449,8 @@ if "!REG_VALUE!"=="ACD11,ACD10,SCACAD100" (
 )
 
 if "%KEEP_NX_DEFAULTS%"=="false" (
-    echo Overwriting NX default settings...
-    robocopy "C:\Siemens_Temp" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_DEFAULTS_PATH%" /copyall >NUL 2>&1
+    echo [NX: 5/6] Overwriting NX default settings...
+    robocopy "%TEMP_DIR%" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_DEFAULTS_PATH%" /copyall >NUL 2>&1
     if errorlevel 3 (
         echo [31m[ERROR][0m Failed to overwrite NX default settings.
         echo Please apply defaults manually in NX or by using the Licensing Tool.
@@ -464,11 +458,11 @@ if "%KEEP_NX_DEFAULTS%"=="false" (
         echo [32m[SUCCESS][0m NX default settings overwritten successfully.
     )
 ) else (
-    echo [INFO] Keeping existing NX default settings.
+    echo [34m[INFO][0m [NX: 5/6] Keeping existing NX default settings.
 )
 
-echo Applying FSAE role...
-robocopy "C:\Siemens_Temp" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_USER_MTX%" "%NX_USER_PREFERENCES%" "%NX_USER_PROFILE%" /copyall >NUL 2>&1
+echo [NX: 6/6] Applying FSAE role...
+robocopy "%TEMP_DIR%" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_USER_MTX%" "%NX_USER_PREFERENCES%" "%NX_USER_PROFILE%" /copyall >NUL 2>&1
 if errorlevel 3 (
     echo [31m[ERROR][0m Failed to apply FSAE role.
     echo Please apply role manually in NX.
