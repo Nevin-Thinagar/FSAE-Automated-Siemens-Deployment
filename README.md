@@ -17,4 +17,4 @@ This script was initially created for:
 ## Setup Info
 - Make sure to remove the "+" from the STAR-CCM filename or the curl commands will break
 - Get the specific version of Temurin from their [Github repo](https://github.com/adoptium/temurin21-binaries/releases) as the website only has the latest versions
-- Make sure to configure the VFS to allow .dpv, .mtx. and .dat files to be transferred
+- Make sure to configure the VFS to allow .dpv, .mtx., .dat, .fcg, .dlx, and .def files to be transferred

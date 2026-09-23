@@ -30,10 +30,13 @@ set "NX_DIR=SiemensNX-2506.8901_wntx64"
 set "NX_DEFAULTS_PATH=NX_user.dpv"
 set "NX_USER_MTX=user.mtx"
 set "NX_USER_PREFERENCES=UserPreferences.txt"
-set "NX_USER_PROFILE=UserProfile.dat"`
+set "NX_USER_PROFILE=UserProfile.dat"
+set "NX_USER_TOGGLES=feature_toggle_user.fcg"
+set "NX_USER_DIALOGS=DialogMemory.dlx"
+set "NX_USER_LOAD_OPTIONS=load_options.def"
 
-set "TC_PATH=tc2506_wntx64.zip"
-set "TC_DIR=wntx64"
+set "TC_PATH=tc2506_my27.zip"
+set "TC_DIR=tc2506_my27"
 set "TC_PATCH_PATH=tc2506.0009_wntx64.zip"
 set "TC_PATCH_DIR=wntx64"
 
@@ -97,7 +100,7 @@ choice /n /m "Go to Skip point? (For development only) [Y/N] "
 if errorlevel 2 (
     echo Continuing with installation...
 ) else (
-    set "clean_choices=1 2 3 4 5 6"
+    set "KEEP_NX_DEFAULTS=false"
     goto SKIP
 )
 
@@ -235,18 +238,20 @@ if not "!clean_choices:1=!"=="!clean_choices!" (
     call :DownloadAndExtract "%NX_USER_MTX%"
     call :DownloadAndExtract "%NX_USER_PREFERENCES%"
     call :DownloadAndExtract "%NX_USER_PROFILE%"
+    call :DownloadAndExtract "%NX_USER_TOGGLES%"
+    call :DownloadAndExtract "%NX_USER_DIALOGS%"
+    call :DownloadAndExtract "%NX_USER_LOAD_OPTIONS%"
     if not NX_PATH=="" (
         set "NX_PATH=%NX_DIR%"
     )
 )
 
 if not "!clean_choices:2=!"=="!clean_choices!" (
-    :SKIP
     call :DownloadAndExtract "%TC_PATH%"
     if not TC_PATH=="" (
         set "TC_PATH=%TC_DIR%"
     )
-    :goto QUIT
+
     call :DownloadAndExtract "%TC_PATCH_PATH%"
     if not TC_PATCH_PATH=="" (
         set "TC_PATCH_PATH=%TC_PATCH_DIR%"
@@ -284,11 +289,18 @@ echo.
 echo Installing software that was fetched successfully...
 echo Creating installation directory at "%INSTALL_DIR%"...
 mkdir "%INSTALL_DIR%" >NUL 2>&1
+echo Setting permissions for installation directory...
+takeown /f "%INSTALL_DIR%" /r /d y >NUL 2>&1
+icacls "%INSTALL_DIR%" /grant *S-1-1-0:(OI)(CI)F /t /c /q >NUL 2>&1
 
 call :InstallJava
 
 if not "!clean_choices:1=!"=="!clean_choices!" (
     call :InstallNX
+)
+
+if not "!clean_choices:2=!"=="!clean_choices!" (
+    call :InstallTeamcenter
 )
 
 pause
@@ -332,7 +344,9 @@ if errorlevel 1 (
     echo [32m[SUCCESS][0m Fetched %ArchivePath%.
 )
 
-if /i "%ArchivePath:~-4%"==".zip" (
+if /i "%ArchivePath:~-4%"==".zip" set "ValidArchive=1"
+if /i "%ArchivePath:~-3%"==".7z"  set "ValidArchive=1"
+if /i "%ValidArchive%"=="1" (
     echo Extracting %ArchivePath%...
     tar -xf "%TEMP_DIR%\%ArchivePath%" -C "%TEMP_DIR%" >NUL 2>&1
     if errorlevel 1 (
@@ -392,7 +406,7 @@ if %NX_PATH%=="" (
     goto :eof
 )
 
-echo [NX: 1/6] setting SPLM_LICENSE_SERVER environment variable...
+echo [NX: 1/10] setting SPLM_LICENSE_SERVER environment variable...
 set "SPLM_LICENSE_SERVER=%LICENSE_SERVER%" >NUL 2>&1
 setx SPLM_LICENSE_SERVER "%LICENSE_SERVER%" /M >NUL 2>&1
 if defined SPLM_LICENSE_SERVER (
@@ -402,7 +416,7 @@ if defined SPLM_LICENSE_SERVER (
     echo Please set it manually to %LICENSE_SERVER%.
 )
 
-echo [NX: 2/6] setting UGII_BASE_DIR environment variable...
+echo [NX: 2/10] setting UGII_BASE_DIR environment variable...
 if defined UGII_BASE_DIR (
     if "%UGII_BASE_DIR:NX2506=%"=="!UGII_BASE_DIR!" (
         set "UGII_BASE_DIR=%INSTALL_DIR%\NX2506" >NUL 2>&1
@@ -429,15 +443,27 @@ if defined UGII_BASE_DIR (
     )
 )
 
-echo [NX: 3/6] Running Setup.exe for NX installation, this may take a while...
+echo [NX: 3/10] Running Setup.exe for NX installation, this may take a while...
 %TEMP_DIR%\%NX_PATH%\nx\Setup.exe /s /w /v" /qn LICENSESERVER=%LICENSE_SERVER% INSTALLDIR=\"%INSTALL_DIR%\NX2506\" ADDLOCAL=\"%NX_FEATURES%\""
 if exist "!NX_INSTALL_DIR!\NX2506\UGII\ugraf.exe" (
     echo [32m[SUCCESS][0m NX installation completed successfully.
 ) else (
     echo [31m[ERROR][0m NX installation failed. Please check the log files in %TEMP_DIR%\%NX_PATH%\nx\ for more details.
+    goto :eof
 )
 
-echo [NX: 4/6] Setting NX Bundles...
+echo [NX: 4/10] Setting UGII_UGMGR_HTTP_URL environment variable...
+set "UGII_UGMGR_HTTP_URL=http://fsae-supercomputer:7001/tc" >NUL 2>&1
+setx UGII_UGMGR_HTTP_URL "http://fsae-supercomputer:7001/tc" /M >NUL 2>&1
+if defined UGII_UGMGR_HTTP_URL (
+    echo [32m[SUCCESS][0m UGII_UGMGR_HTTP_URL environment variable set to !UGII_UGMGR_HTTP_URL!.
+) else (
+    echo [31m[ERROR][0m Failed to set UGII_UGMGR_HTTP_URL environment variable.
+    echo Please set it manually to http://fsae-supercomputer:7001/tc.
+)
+pause
+
+echo [NX: 5/10] Setting NX Bundles...
 reg add "HKCU\Software\Siemens_PLM_Software\Common_Licensing" /v NX_BUNDLES /t REG_SZ /d "ACD11,ACD10,SCACAD100" /f >NUL 2>&1
 for /f "tokens=2,*" %%A in ('reg query "HKCU\Software\Siemens_PLM_Software\Common_Licensing" /v "NX_BUNDLES" 2^>nul') do (
     set "REG_VALUE=%%B"
@@ -447,9 +473,9 @@ if "!REG_VALUE!"=="ACD11,ACD10,SCACAD100" (
 ) else (
     echo [31m[ERROR][0m Failed to set NX_BUNDLES registry key. Please apply bundles manually in NX or by using the Licensing Tool.
 )
-
+:SKIP2
 if "%KEEP_NX_DEFAULTS%"=="false" (
-    echo [NX: 5/6] Overwriting NX default settings...
+    echo [NX: 6/10] Overwriting NX default settings...
     robocopy "%TEMP_DIR%" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_DEFAULTS_PATH%" /copyall >NUL 2>&1
     if errorlevel 3 (
         echo [31m[ERROR][0m Failed to overwrite NX default settings.
@@ -458,10 +484,10 @@ if "%KEEP_NX_DEFAULTS%"=="false" (
         echo [32m[SUCCESS][0m NX default settings overwritten successfully.
     )
 ) else (
-    echo [34m[INFO][0m [NX: 5/6] Keeping existing NX default settings.
+    echo [34m[INFO][0m [NX: 6/10] Keeping existing NX default settings.
 )
 
-echo [NX: 6/6] Applying FSAE role...
+echo [NX: 7/10] Applying FSAE role...
 robocopy "%TEMP_DIR%" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_USER_MTX%" "%NX_USER_PREFERENCES%" "%NX_USER_PROFILE%" /copyall >NUL 2>&1
 if errorlevel 3 (
     echo [31m[ERROR][0m Failed to apply FSAE role.
@@ -470,17 +496,57 @@ if errorlevel 3 (
     echo [32m[SUCCESS][0m FSAE role applied successfully.
 )
 
+echo [NX: 8/10] Applying FSAE feature toggles...
+robocopy "%TEMP_DIR%" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_USER_TOGGLES%" /copyall >NUL 2>&1
+if errorlevel 3 (
+    echo [31m[ERROR][0m Failed to apply FSAE feature toggles.
+    echo Please disable new sketch solver manually in NX.
+) else (
+    echo [32m[SUCCESS][0m FSAE feature toggles applied successfully.
+)
+
+echo [NX: 9/10] Applying FSAE dialog settings...
+robocopy "%TEMP_DIR%" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_USER_DIALOGS%" /copyall >NUL 2>&1
+if errorlevel 3 (
+    echo [31m[ERROR][0m Failed to apply FSAE dialog settings.
+    echo Please got to "Assembly Load Options" and set "Load Behavior" to "Allow Replacement"
+) else (
+    echo [32m[SUCCESS][0m FSAE dialog settings applied successfully.
+)
+
+echo [NX: 10/10] Applying FSAE load options...
+robocopy "%TEMP_DIR%" "%USERPROFILE%\AppData\Local\Siemens\NX2506" "%NX_USER_LOAD_OPTIONS%" /copyall >NUL 2>&1
+if errorlevel 3 (
+    echo [31m[ERROR][0m Failed to move FSAE load options.
+    echo Please go to "Assembly Load Options" and set "Load Behavior" to "Allow Replacement"
+) else (
+    echo [32m[SUCCESS][0m FSAE load options moved successfully.
+    set "UGII_LOAD_OPTIONS=%USERPROFILE%\AppData\Local\Siemens\NX2506\%NX_USER_LOAD_OPTIONS%"
+    setx "UGII_LOAD_OPTIONS" "%USERPROFILE%\AppData\Local\Siemens\NX2506\%NX_USER_LOAD_OPTIONS%" /M >NUL 2>&1
+    if defined UGII_LOAD_OPTIONS (
+        echo [32m[SUCCESS][0m UGII_LOAD_OPTIONS environment variable set to !UGII_LOAD_OPTIONS!.
+    ) else (
+        echo [31m[ERROR][0m Failed to set UGII_LOAD_OPTIONS environment variable.
+        echo Please set it manually to %USERPROFILE%\AppData\Local\Siemens\NX2506\%NX_USER_LOAD_OPTIONS%.
+    )
+)
+pause
+goto QUIT
 goto :eof
 
 :InstallTeamcenter
 rem Usage: call :InstallTeamcenter
 echo.
+echo Installing Teamcenter...
 if %TC_PATH%=="" (
     echo [31m[ERROR][0m Teamcenter installation path is not set. Skipping Teamcenter installation.
     goto :eof
 )
 
-
+echo [1/1] Running tem.bat for Teamcenter installation, this may take a while...
+cd /d "%TEMP_DIR%\%TC_PATH%"
+call tem.bat -jre %INSTALL_DIR%\%JAVA_PATH% -s silent.xml
+cd /d "%~dp0"
 
 goto :eof
 
