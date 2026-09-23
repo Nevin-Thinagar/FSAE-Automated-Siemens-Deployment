@@ -330,9 +330,14 @@ rem Usage: call :DownloadAndExtract <ArchivePath>
 set "ArchivePath=%~1"
 echo.
 echo Fetching %ArchivePath%...
+:: 1. Formulate the full URL and local destination path
+set "FULL_URL=%VFS_PATH%%ArchivePath%"
+set "LOCAL_DEST=%TEMP_DIR%\%ArchivePath%"
 
-curl -f -L "%VFS_PATH%%ArchivePath%" -o "%TEMP_DIR%\%ArchivePath%"
-if errorlevel 1 (
+:: 2. Use PowerShell BITS to download with robust retries
+powershell -Command "Start-BitsTransfer -Source '%FULL_URL%' -Destination '%LOCAL_DEST%' -RetryInterval 60 -RetryTimeout 300 -ErrorAction Stop"
+
+if %ERRORLEVEL% NEQ 0 (
     echo [31m[ERROR][0m Failed to fetch %ArchivePath%.
     echo Skipping installation of this software.
     echo.
